@@ -6,6 +6,8 @@ the University of Texas at Dallas
 """
 import pandas as pd
 import numpy as np
+import warnings
+warnings.filterwarnings("ignore")
 
 class KMeansTweets:
     """
@@ -14,10 +16,15 @@ class KMeansTweets:
     https://archive.ics.uci.edu/dataset/438/health+news+in+twitter
     Data hosted: https://personal.utdallas.edu/~art150530/wsjhealth.txt
     """
-    def __init__(self, location):
+    def __init__(self, location, k=5, max_epochs=100):
+        self.epochs = max_epochs
+        self.test_progress = []
         self._data = pd.DataFrame()
         self.load_data(location)
         self.preprocess_data()
+        self.centers = []
+        for i in range(k):
+            self.centers.append(self._data[i])
 
 
     def load_data(self, location):
@@ -42,30 +49,78 @@ class KMeansTweets:
                     new_tweet[index] = new_tweet[index].replace('#', '')
                 new_tweet[index] = new_tweet[index].lower()
             self._data[iter] = " ".join(new_tweet)
-            print(self._data[iter])
 
     def train(self):
         """
         Train the K-Means Cluster
         """
-        print("Train")
+        for i in range(self.epochs):
+            cluster = self.cluster()
+            new_centers = []
+            for j in range(len(self.centers)):
+                new_centers.append(self.new_center(cluster[j]))
+            if new_centers == self.centers:
+                break
+            self.centers = new_centers
 
     def test(self):
         """
         Test the K-Means Cluster
         """
-        print("Test")
+        clusters = self.cluster()
+        averages = []
+        for i in range(len(self.centers)):
+            average = 0
+            for tweet in clusters[i]:
+                average = average + self.tweet_distance(tweet, self.centers[i])
+            averages.append(average/len(clusters[i]))
+        return sum(averages) / len(averages)
 
-    def update(self):
-        """
-        Function that updates the cluster centers
-        """
-        print("Update")
+    @staticmethod
+    def tweet_distance(tweet1, tweet2):
+        # Union is all words in either
+        # Intersection is words in both
+        # Dist(A,B) = 1 - (A INT B)/(A U B)
+        tweet1 = tweet1.split()
+        tweet2 = tweet2.split()
+        intersection = 0
+        for word in tweet1:
+            intersection = tweet2.count(word)
+        union = len(tweet1) + len(tweet2) - intersection
+        distance = 1 - (intersection/union)
+        return distance
 
-    def predict(self, data):
-        """
-        For a single instance row of data, uses the model to predict it.
-        :param data: a row of the data
-        :return: prediction, 1 or 0
-        """
-        print("Predict")
+    def new_center(self, tweets):
+        center_dist = 2
+        center = ""
+        for tweet in tweets:
+            average = self.average_distance(tweet, tweets)
+            if average < center_dist:
+                center_dist = average
+                center = tweet
+        return center
+
+    def average_distance(self, tweet, tweets):
+        average = 0
+        for dist_tweet in tweets:
+            average = average + self.tweet_distance(tweet, dist_tweet)
+        average = average / len(tweets)
+        return average
+
+    def assign(self, tweet):
+        dist = 2
+        center_loc = 0
+        for center in self.centers:
+            td = self.tweet_distance(center, tweet)
+            if td < dist:
+                dist = td
+                center_loc = self.centers.index(center)
+        return center_loc
+
+    def cluster(self):
+        cluster = []
+        for _ in range(len(self.centers)):
+            cluster.append([])
+        for iter, tweet in self._data.iterrows():
+            cluster[self.assign(tweet['Tweet'])].append(tweet['Tweet'])
+        return cluster

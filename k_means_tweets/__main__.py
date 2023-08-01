@@ -7,3 +7,5 @@ from k_means import KMeansTweets
 
 if __name__ == '__main__':
     model = KMeansTweets("https://personal.utdallas.edu/~art150530/wsjhealth.txt")
+    model.train()
+    print(model.test())

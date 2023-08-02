@@ -5,7 +5,7 @@ the University of Texas at Dallas
 @author Alexis Tudor
 """
 import pandas as pd
-import numpy as np
+import matplotlib.pyplot as plt
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -16,7 +16,7 @@ class KMeansTweets:
     https://archive.ics.uci.edu/dataset/438/health+news+in+twitter
     Data hosted: https://personal.utdallas.edu/~art150530/wsjhealth.txt
     """
-    def __init__(self, location, k=5, max_epochs=100):
+    def __init__(self, location, k=50, max_epochs=100):
         self.epochs = max_epochs
         self.test_progress = []
         self._data = pd.DataFrame()
@@ -40,15 +40,21 @@ class KMeansTweets:
         This method pre-processes a pandas dataframe in order to remove
         URLs, @ mentions, and hashtags.
         """
+        tweets = []
         for iter, row in self._data.iterrows():
             new_tweet = row['Tweet'].split()
             for index, word in enumerate(new_tweet):
-                if '@' in word or 'http' in word or 'www' in word:
-                    new_tweet[index] = ''
-                if '#' in word:
-                    new_tweet[index] = new_tweet[index].replace('#', '')
-                new_tweet[index] = new_tweet[index].lower()
-            self._data[iter] = " ".join(new_tweet)
+                new_word = word.lower()
+                if '@' in new_word or 'http' in new_word or 'www' in new_word or 'rt' == new_word:
+                    new_word = ''
+                if '#' in new_word:
+                    new_word = new_tweet[index].replace('#', '')
+                if '&amp' in new_word:
+                    new_word = new_tweet[index].replace('&amp', ' and ')
+                new_tweet[index] = new_word
+            if len(new_tweet) > 0:
+                tweets.append(" ".join(new_tweet))
+        self._data = tweets
 
     def train(self):
         """
@@ -59,6 +65,7 @@ class KMeansTweets:
             new_centers = []
             for j in range(len(self.centers)):
                 new_centers.append(self.new_center(cluster[j]))
+            self.test_progress.append(self.test())
             if new_centers == self.centers:
                 break
             self.centers = new_centers
@@ -70,11 +77,8 @@ class KMeansTweets:
         clusters = self.cluster()
         averages = []
         for i in range(len(self.centers)):
-            average = 0
-            for tweet in clusters[i]:
-                average = average + self.tweet_distance(tweet, self.centers[i])
-            averages.append(average/len(clusters[i]))
-        return sum(averages) / len(averages)
+            averages.append(self.average_distance(self.centers[i], clusters[i]))
+        return (sum(averages) / len(averages)),
 
     @staticmethod
     def tweet_distance(tweet1, tweet2):
@@ -85,7 +89,7 @@ class KMeansTweets:
         tweet2 = tweet2.split()
         intersection = 0
         for word in tweet1:
-            intersection = tweet2.count(word)
+            intersection = intersection + tweet2.count(word)
         union = len(tweet1) + len(tweet2) - intersection
         distance = 1 - (intersection/union)
         return distance
@@ -121,6 +125,22 @@ class KMeansTweets:
         cluster = []
         for _ in range(len(self.centers)):
             cluster.append([])
-        for iter, tweet in self._data.iterrows():
-            cluster[self.assign(tweet['Tweet'])].append(tweet['Tweet'])
+        for tweet in self._data:
+            cluster[self.assign(tweet)].append(tweet)
         return cluster
+
+    def plot_training_error(self):
+        x_axis = []
+        for i in range(len(self.test_progress)):
+            x_axis.append(i)
+        plt.plot(x_axis, self.test_progress)
+        plt.ylabel('Error')
+        plt.show()
+
+    def sse(self):
+        clusters = self.cluster()
+        sse = 0
+        for i in range(len(clusters)):
+            for tweet1 in clusters[i]:
+                sse = sse + self.tweet_distance(tweet1, self.centers[i])**2
+        return sse

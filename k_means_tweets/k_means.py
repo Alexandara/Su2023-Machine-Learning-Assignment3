@@ -26,7 +26,6 @@ class KMeansTweets:
         for i in range(k):
             self.centers.append(self._data[i])
 
-
     def load_data(self, location):
         """
         This method loads the data from a link into a pandas dataframe
@@ -73,15 +72,22 @@ class KMeansTweets:
     def test(self):
         """
         Test the K-Means Cluster
+        :returns: average distance from centers for tweets
         """
         clusters = self.cluster()
         averages = []
         for i in range(len(self.centers)):
             averages.append(self.average_distance(self.centers[i], clusters[i]))
-        return (sum(averages) / len(averages)),
+        return sum(averages) / len(averages)
 
     @staticmethod
     def tweet_distance(tweet1, tweet2):
+        """
+        Calculates the distance of two tweets
+        :param tweet1: first tweet
+        :param tweet2: second tweet
+        :return: Jaccard distance between the two tweets
+        """
         # Union is all words in either
         # Intersection is words in both
         # Dist(A,B) = 1 - (A INT B)/(A U B)
@@ -95,6 +101,11 @@ class KMeansTweets:
         return distance
 
     def new_center(self, tweets):
+        """
+        Calculates a new center for a cluster
+        :param tweets: current cluster
+        :return: new center of the cluster
+        """
         center_dist = 2
         center = ""
         for tweet in tweets:
@@ -105,6 +116,12 @@ class KMeansTweets:
         return center
 
     def average_distance(self, tweet, tweets):
+        """
+        Average distance of a tweet from a collection of tweets
+        :param tweet: one tweet
+        :param tweets: collection of tweets that need distancing
+        :return: average distance from the tweet to all the tweets
+        """
         average = 0
         for dist_tweet in tweets:
             average = average + self.tweet_distance(tweet, dist_tweet)
@@ -112,6 +129,11 @@ class KMeansTweets:
         return average
 
     def assign(self, tweet):
+        """
+        Assigns a point to a cluster
+        :param tweet: tweet to assign
+        :return: cluster center index
+        """
         dist = 2
         center_loc = 0
         for center in self.centers:
@@ -122,6 +144,10 @@ class KMeansTweets:
         return center_loc
 
     def cluster(self):
+        """
+        Clusters all tweets
+        :return: clusters with the tweets as an array of arrays of tweets
+        """
         cluster = []
         for _ in range(len(self.centers)):
             cluster.append([])
@@ -130,6 +156,9 @@ class KMeansTweets:
         return cluster
 
     def plot_training_error(self):
+        """
+        Plots training error over epochs
+        """
         x_axis = []
         for i in range(len(self.test_progress)):
             x_axis.append(i)
@@ -138,6 +167,10 @@ class KMeansTweets:
         plt.show()
 
     def sse(self):
+        """
+        Calculates SSE
+        :return: sse
+        """
         clusters = self.cluster()
         sse = 0
         for i in range(len(clusters)):
